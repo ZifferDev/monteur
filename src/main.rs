@@ -4,6 +4,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::copy;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use tar::Archive;
 
 fn main() -> Result<()> {
@@ -19,6 +20,7 @@ fn main() -> Result<()> {
     let temp_dir_path = Path::new("temp");
     if temp_dir_path.exists() {
         fs::remove_dir_all(temp_dir_path).context("Failed to remove existing temp directory")?;
+        println!("Removed existing temp directory");
     }
     fs::create_dir(temp_dir_path).context("Failed to create temp directory")?;
     println!("Created directory at: {}", temp_dir_path.display());
@@ -95,6 +97,67 @@ fn main() -> Result<()> {
     }
 
     println!("Archive successfully extracted");
+
+    // cd into the temp directory
+    std::env::set_current_dir(temp_dir_path).context("Failed to set current directory")?;
+
+    // Detect build system based on presence of build files
+    let maven_patterns = [
+        "pom.xml",
+        "pom.atom",
+        "pom.clj",
+        "pom.groovy",
+        "pom.rb",
+        "pom.scala",
+        "pom.yaml",
+        "pom.yml",
+    ];
+
+    let is_maven = maven_patterns
+        .iter()
+        .any(|pattern| Path::new(pattern).exists());
+
+    let is_gradle = Path::new("gradlew").exists();
+
+    if is_maven {
+        println!("Using Maven");
+        // print the maven version by running "mvn version"
+        let output = Command::new("mvn")
+            .arg("--version")
+            .output()
+            .context("Failed to run mvn version")?;
+        println!("Maven version: {}", String::from_utf8_lossy(&output.stdout));
+
+        // run "mvn clean package -Dmaven.test.skip=true"
+        let output = Command::new("mvn")
+            .args(&["clean", "package", "-Dmaven.test.skip=true"])
+            .output()
+            .context("Failed to run mvn clean package")?;
+
+        // print the output
+        println!(
+            "Maven build output:\n{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    } else if is_gradle {
+        println!("Using Gradle");
+
+        // run "./gradlew clean build -x check -x test"
+        let output = Command::new("./gradlew")
+            .args(&["clean", "build", "-x", "check", "-x", "test"])
+            .output()
+            .context("Failed to run gradlew")?;
+
+        // print the output
+        println!(
+            "Gradle build output:\n{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    } else {
+        anyhow::bail!(
+            "No build system detected. Make sure your project contains a pom.xml/pom.groovy/... or gradlew file. If you're using Gradle but there is no gradlew file, run 'gradle wrapper' to generate one."
+        );
+    }
 
     Ok(())
 }
