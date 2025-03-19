@@ -119,6 +119,8 @@ fn main() -> Result<()> {
 
     let is_gradle = Path::new("gradlew").exists();
 
+    let artifact_path;
+
     if is_maven {
         println!("Using Maven");
         // print the maven version by running "mvn version"
@@ -139,6 +141,8 @@ fn main() -> Result<()> {
             "Maven build output:\n{}",
             String::from_utf8_lossy(&output.stdout)
         );
+
+        artifact_path = "target/".to_string();
     } else if is_gradle {
         println!("Using Gradle");
 
@@ -153,12 +157,55 @@ fn main() -> Result<()> {
             "Gradle build output:\n{}",
             String::from_utf8_lossy(&output.stdout)
         );
+
+        artifact_path = "build/libs/".to_string();
     } else {
         anyhow::bail!(
             "No build system detected. Make sure your project contains a pom.xml/pom.groovy/... or gradlew file. If you're using Gradle but there is no gradlew file, run 'gradle wrapper' to generate one."
         );
     }
 
+    // collect the single .jar file with the longest name in the artifact_path folder
+    println!("Searching for JAR files in {}", artifact_path);
+
+    let jar_files = fs::read_dir(&artifact_path)
+        .context(format!("Failed to read directory: {}", artifact_path))?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.is_file() && path.extension()? == "jar" {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if jar_files.is_empty() {
+        anyhow::bail!("No JAR files found in {}", artifact_path);
+    }
+
+    // Find the JAR with the longest filename
+    let jar_file = jar_files
+        .iter()
+        .max_by_key(|path| path.file_name().unwrap_or_default().to_string_lossy().len())
+        .context("Failed to find JAR file with longest name")?;
+
+    println!("Found JAR file: {}", jar_file.display());
+
+    // Create output directory if it doesn't exist
+    let output_dir = Path::new("output");
+    if !output_dir.exists() {
+        fs::create_dir_all(output_dir).context("Failed to create output directory")?;
+        println!("Created output directory");
+    }
+
+    // Copy the JAR file to the output directory
+    let file_name = jar_file.file_name().unwrap();
+    let output_path = output_dir.join(file_name);
+
+    fs::copy(jar_file, &output_path).context("Failed to copy JAR file to output directory")?;
+    println!("Copied JAR file to: {}", output_path.display());
     Ok(())
 }
 
