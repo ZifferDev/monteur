@@ -11,7 +11,9 @@ ARG APP_NAME
 WORKDIR /app
 
 # Install host build dependencies.
-RUN apk add --no-cache clang lld musl-dev git
+RUN apk add --no-cache clang lld musl-dev git pkgconfig openssl-dev
+
+ENV RUSTFLAGS="-Ctarget-feature=-crt-static"
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -28,7 +30,7 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
 cargo build --locked --release && \
-cp ./target/release/$APP_NAME /bin/app
+cp ./target/release/$APP_NAME /bin/monteur
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -36,24 +38,24 @@ cp ./target/release/$APP_NAME /bin/app
 # image from the build stage where the necessary files are copied from the build
 # stage.
 #
-# We user the alpine image as the foundation for running the app.
-# By specifying the "3" tag, it will use the latest version of alpine.
-FROM alpine:3 AS final
+FROM maven:3-eclipse-temurin-21-alpine AS final
+
+# Install the necessary dependencies
+RUN apk add --no-cache \
+        ca-certificates \
+        gcc
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    appuser
-USER appuser
+# ARG UID=10001
+# RUN adduser \
+#     --disabled-password \
+#     --uid "${UID}" \
+#     appuser
+# USER appuser
+# WORKDIR /home/appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/app /bin/
+COPY --from=build /bin/monteur /bin/
 
-ENTRYPOINT [ "/bin/app" ]
+ENTRYPOINT [ "/bin/monteur" ]

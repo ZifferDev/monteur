@@ -50,15 +50,7 @@ fn main() -> Result<()> {
     println!("Extracting archive to: {}", temp_dir_path.display());
     extract_tar_gz(&archive_path, temp_dir_path).context("Failed to extract archive")?;
 
-    println!(
-        "Archive successfully extracted to: {}",
-        temp_dir_path.display()
-    );
-
-    // Keep the directory until user presses Enter
-    println!("Press Enter to exit...");
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input)?;
+    println!("Archive successfully extracted");
 
     Ok(())
 }
