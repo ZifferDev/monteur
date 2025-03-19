@@ -28,5 +28,6 @@
 **/values.dev.yaml
 /bin
 /target
+/temp
 LICENSE
 README.md

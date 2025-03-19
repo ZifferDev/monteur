@@ -616,7 +616,6 @@ dependencies = [
  "flate2",
  "reqwest",
  "tar",
- "tempfile",
 ]
 
 [[package]]
