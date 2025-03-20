@@ -185,11 +185,48 @@ fn main() -> Result<()> {
         anyhow::bail!("No JAR files found in {}", artifact_path);
     }
 
-    // Find the JAR with the longest filename
-    let jar_file = jar_files
-        .iter()
-        .max_by_key(|path| path.file_name().unwrap_or_default().to_string_lossy().len())
-        .context("Failed to find JAR file with longest name")?;
+    let jar_file = if is_maven {
+        // For Maven, follow the priority list:
+        // 1. If there is a jar that ends with -shaded.jar, use that
+        let shaded_jar = jar_files.iter().find(|path| {
+            path.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .ends_with("-shaded.jar")
+        });
+
+        if let Some(jar) = shaded_jar {
+            println!("Found shaded JAR: {}", jar.display());
+            jar
+        } else {
+            // 2. If there is a jar that doesn't start with original-, use that
+            let non_original_jar = jar_files.iter().find(|path| {
+                !path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .starts_with("original-")
+            });
+
+            if let Some(jar) = non_original_jar {
+                println!("Found default JAR: {}", jar.display());
+                jar
+            } else {
+                // 3. Use the .jar file with the longest name
+                println!("Using JAR with longest filename");
+                jar_files
+                    .iter()
+                    .max_by_key(|path| path.file_name().unwrap_or_default().to_string_lossy().len())
+                    .context("Failed to find JAR file")?
+            }
+        }
+    } else {
+        // For Gradle, use the original longest filename logic
+        jar_files
+            .iter()
+            .max_by_key(|path| path.file_name().unwrap_or_default().to_string_lossy().len())
+            .context("Failed to find JAR file")?
+    };
 
     println!("Found JAR file: {}", jar_file.display());
 
