@@ -194,10 +194,10 @@ fn main() -> Result<()> {
     println!("Found JAR file: {}", jar_file.display());
 
     // Create output directory if it doesn't exist
-    let output_dir = Path::new("output");
+    let output_dir = PathBuf::from("/output");
     if !output_dir.exists() {
-        fs::create_dir_all(output_dir).context("Failed to create output directory")?;
-        println!("Created output directory");
+        fs::create_dir_all(&output_dir).context("Failed to create output directory")?;
+        println!("Created output directory at: {}", output_dir.display());
     }
 
     // Copy the JAR file to the output directory

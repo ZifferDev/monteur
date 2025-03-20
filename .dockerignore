@@ -29,5 +29,6 @@
 /bin
 /target
 /temp
+/output
 LICENSE
 README.md
