@@ -27,7 +27,7 @@ Where `<DOWNLOAD_URL>` is the URL to a tar.gz archive containing the Java projec
 Monteur is available as a Docker image with Maven and JDK 21 pre-installed:
 
 ```bash
-docker run --rm -v /host/path/to/output:/output ghcr.io/zifferdev/monteur:master <DOWNLOAD_URL>
+docker run --rm -v /host/path/to/output:/output ghcr.io/zifferdev/monteur:latest <DOWNLOAD_URL>
 ```
 
 ## How It Works
